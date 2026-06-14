@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Impostazioni — Grok Downloader</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="settings.css">
+</head>
+
+<body>
+    <div class="settings-app">
+        <header class="settings-header">
+            <div class="logo">G</div>
+            <div>
+                <h1>Impostazioni Download</h1>
+                <p>Grok Media Downloader</p>
+            </div>
+        </header>
+
+        <main class="settings-body">
+            <div class="settings-card">
+                <div class="field">
+                    <div class="field-info">
+                        <label for="delaySingle">Ritardo singolo (ms)</label>
+                        <p>Tempo calcolato in millisecondi da attendere tra il download di un elemento e il successivo.
+                        </p>
+                    </div>
+                    <input type="number" id="delaySingle" min="0" max="10000" step="50" value="350">
+                </div>
+                <div class="field">
+                    <div class="field-info">
+                        <label for="batchSize">Grandezza Batch</label>
+                        <p>Numero di elementi da scaricare consecutivamente prima di effettuare una pausa lunga (utile
+                            per evitare rate-limit).</p>
+                    </div>
+                    <input type="number" id="batchSize" min="1" max="500" step="1" value="40">
+                </div>
+                <div class="field">
+                    <div class="field-info">
+                        <label for="delayBatch">Ritardo Batch (ms)</label>
+                        <p>La durata in millisecondi della pausa lunga, effettuata ogni volta che viene raggiunto il
+                            numero di download del Batch.</p>
+                    </div>
+                    <input type="number" id="delayBatch" min="0" max="60000" step="100" value="4800">
+                </div>
+                <div class="field">
+                    <div class="field-info">
+                        <label for="thumbW">Largh. Thumb (px)</label>
+                        <p>Misura in base alla quale ridimensionare in larghezza le miniature mostrate nell'interfaccia
+                            dell'estensione.</p>
+                    </div>
+                    <input type="number" id="thumbW" min="30" max="300" step="10" value="150">
+                </div>
+                <div class="field">
+                    <div class="field-info">
+                        <label for="thumbH">Alt. Thumb (px)</label>
+                        <p>Misura per l'altezza delle miniature mostrate nell'interfaccia di questa estensione.</p>
+                    </div>
+                    <input type="number" id="thumbH" min="30" max="300" step="10" value="150">
+                </div>
+                <div class="field">
+                    <div class="field-info">
+                        <label for="maxSimultaneous">Download simultanei</label>
+                        <p>Numero massimo di file scaricati contemporaneamente (default 5).</p>
+                    </div>
+                    <input type="number" id="maxSimultaneous" min="1" max="20" step="1" value="5">
+                </div>
+                <div class="field field-toggle">
+                    <div class="field-info">
+                        <label for="reorderEnabled">REORDER (Ordina per data)</label>
+                        <p>Se attivo, riordina gli elementi in <a href="https://grok.com/imagine/saved" target="_blank"
+                                style="color:var(--accent)">Saved</a> in base alla data di creazione (più recenti in
+                            alto).</p>
+                    </div>
+                    <label class="toggle">
+                        <input type="checkbox" id="reorderEnabled" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="field field-toggle">
+                    <div class="field-info">
+                        <label for="saveMetadata">Salva prompt nei metadati</label>
+                        <p>Inserisce il prompt di generazione direttamente nei metadati dell'immagine (EXIF/Comment).</p>
+                    </div>
+                    <label class="toggle">
+                        <input type="checkbox" id="saveMetadata" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="field field-toggle">
+                    <div class="field-info">
+                        <label for="soundEnabled">Suono notifica</label>
+                        <p>Riproduce il suono di notifica di sistema quando vengono intercettati nuovi elementi.</p>
+                    </div>
+                    <label class="toggle">
+                        <input type="checkbox" id="soundEnabled" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="field field-toggle">
+                    <div class="field-info">
+                        <label for="turboMode">Turbo Mode (Scarico Ultra Rapido)</label>
+                        <p>Riduce drasticamente i tempi di attesa tra i download e aumenta la velocità complessiva (usa con cautela).</p>
+                    </div>
+                    <label class="toggle">
+                        <input type="checkbox" id="turboMode">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="field field-toggle">
+                    <div class="field-info">
+                        <label for="skipExisting">Salta file esistenti</label>
+                        <p>Evita di riscaricare file (immagini o video) se sono già stati scaricati con lo stesso nome e percorso.</p>
+                    </div>
+                    <label class="toggle">
+                        <input type="checkbox" id="skipExisting" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <button class="save-btn" id="saveBtn">Salva</button>
+            <div class="save-feedback" id="saveFeedback"></div>
+        </main>
+    </div>
+    <script src="settings.js"></script>
+</body>
+
+</html>

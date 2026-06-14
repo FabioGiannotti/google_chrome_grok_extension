@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grok Media Downloader</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="popup.css">
+</head>
+
+<body>
+    <div class="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-top">
+                <div class="header-brand">
+                    <div class="header-logo">G</div>
+                    <div class="header-container">
+                        <div class="header-title">Grok Downloader</div>
+                        <div class="header-status" id="statusText">Pronto</div>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <button id="libraryBtn" title="Biblioteca Salvati" class="btn-icon-plain">💾</button>
+                    <button id="popOutBtn" title="Apri in finestra (Sempre in primo piano)" class="btn-icon-plain">⧉</button>
+                    <a href="#" id="settingsBtn" title="Impostazioni">⚙️</a>
+                </div>
+            </div>
+            <!-- Progress bar -->
+            <div class="progress-container" id="progressContainer" style="display: none;">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                    <div class="progress-text" id="progressText">0 / 0 (0%)</div>
+                </div>
+                <div class="progress-meta" id="progressMeta"></div>
+                <div class="progress-stop-row">
+                    <button class="btn btn-danger btn-xs" id="stopDownloadBtn" title="Ferma Download">🛑 Stop
+                        Download</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Control Bar — Download Buttons -->
+        <div class="control-bar">
+            <button class="btn btn-primary" id="dlAll" title="Scarica tutto">
+                <span>⬇</span> DOWNLOAD TUTTO
+            </button>
+            <button class="btn btn-accent" id="dlSelected" title="Scarica selezionati" disabled>
+                <span>✅</span> DOWNLOAD SELEZIONATI (<span id="selectedCount">0</span>)
+            </button>
+            <button class="btn btn-accent" id="dlImages" title="Scarica immagini">
+                <span>🖼</span> DOWNLOAD IMMAGINI
+            </button>
+            <button class="btn btn-accent" id="dlVideos" title="Scarica video">
+                <span>🎬</span> DOWNLOAD VIDEO
+            </button>
+        </div>
+
+        <!-- Control Bar — Management Buttons -->
+        <div class="control-bar control-bar-manage">
+            <button class="btn btn-danger" id="clearList" title="Svuota elenco">
+                🗑 Svuota
+            </button>
+            <button class="btn btn-warning" id="pauseIntercept" title="Pausa intercettazione">
+                ⏸ Pausa
+            </button>
+            <button class="btn btn-success" id="resumeIntercept" title="Avvia intercettazione">
+                ▶ Avvia
+            </button>
+            <button class="btn btn-secondary" id="exportJson" title="Esporta come JSON">
+                ⬇ JSON
+            </button>
+            <button class="btn btn-secondary" id="exportCsv" title="Esporta come CSV">
+                ⬇ CSV
+            </button>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-bar">
+            <span id="countImages" class="stat-chip">🖼 0 immagini</span>
+            <span id="countVideos" class="stat-chip">🎬 0 video</span>
+            <span id="interceptState" class="stat-chip chip-active">● Intercettazione attiva</span>
+        </div>
+
+        <!-- Search Bar + View Toggle -->
+        <div class="search-bar">
+            <select id="typeFilter" class="type-filter">
+                <option value="all">TUTTO</option>
+                <option value="image">IMMAGINI</option>
+                <option value="video">VIDEO</option>
+            </select>
+            <select id="timeFilter" class="type-filter" title="Filtra per data">
+                <option value="all">SEMPRE</option>
+                <option value="today">OGGI</option>
+                <option value="yesterday">IERI</option>
+                <option value="3days">ULTIMI 3 GG</option>
+                <option value="week">ULTIMA SETTIMANA</option>
+                <option value="month">ULTIMO MESE</option>
+            </select>
+            <input type="text" id="searchInput" placeholder="Cerca in URL, nome file o prompt..." class="search-input">
+            <button class="btn btn-secondary btn-icon" id="logToggle" title="Visualizza Log">📜 Log</button>
+            <button class="btn btn-secondary btn-icon" id="viewToggle" title="Cambia vista">🔲</button>
+            <button class="btn btn-secondary btn-icon" id="sortToggle" title="Ordina per nome file">↕ Nome</button>
+        </div>
+
+        <!-- Media Table -->
+        <div class="table-container" id="tableContainer">
+            <table class="media-table" id="mediaTable">
+                <thead>
+                    <tr>
+                        <th style="width: 30px;"><input type="checkbox" id="selectAll"></th>
+                        <th data-sort="type" class="sortable">Tipo <span class="sort-icon">↕</span></th>
+                        <th>Thumb</th>
+                        <th data-sort="filename" class="sortable">Nome file <span class="sort-icon">↕</span></th>
+                        <th data-sort="details" class="sortable">Dettagli <span class="sort-icon">↕</span></th>
+                        <th data-sort="createTime" class="sortable">Data <span class="sort-icon">↕</span></th>
+                        <th data-sort="size" class="sortable">Dim. <span class="sort-icon">↕</span></th>
+                        <th>Prompt</th>
+                    </tr>
+                </thead>
+                <tbody id="mediaBody">
+                    <!-- rows injected by popup.js -->
+                </tbody>
+            </table>
+            <!-- Grid View -->
+            <div class="media-grid" id="mediaGrid" style="display:none;"></div>
+            <div class="empty-state" id="emptyState">
+                <div class="empty-icon">📭</div>
+                <div>Nessun media intercettato</div>
+                <div class="empty-sub">Vai su grok.com e genera immagini o video</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Confirm Modal -->
+    <div class="modal-overlay" id="confirmModal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-title" id="modalTitle">Conferma</div>
+            <div class="modal-body" id="modalBody">Sei sicuro?</div>
+            <div class="modal-actions">
+                <button class="btn btn-accent" id="modalCancel">Annulla</button>
+                <button class="btn btn-primary" id="modalConfirm">Conferma</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Preview Overlay -->
+    <div class="preview-overlay" id="previewOverlay" style="display: none;">
+        <button class="preview-nav preview-prev" id="previewPrev" title="Precedente">‹</button>
+        <div class="preview-content" id="previewContent"></div>
+        <button class="preview-nav preview-next" id="previewNext" title="Successivo">›</button>
+    </div>
+
+    <!-- Log Panel -->
+    <div class="modal-overlay" id="logModal" style="display: none;">
+        <div class="modal-content log-modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Log Operazioni</div>
+                <div class="log-controls">
+                    <label class="switch-container" title="Attiva registrazione log">
+                        <input type="checkbox" id="loggingEnabled">
+                        <span class="switch-slider"></span>
+                    </label>
+                    <button class="btn btn-secondary btn-xs" id="clearLogsBtn">🗑 Svuota</button>
+                    <button class="btn btn-accent btn-xs" id="closeLogModal">Chiudi</button>
+                </div>
+            </div>
+            <div class="log-container" id="logList">
+                <!-- log entries -->
+            </div>
+        </div>
+    </div>
+
+    <script src="popup.js"></script>
+    <div id="toast-container"></div>
+</body>
+
+</html>

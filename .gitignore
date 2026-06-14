@@ -1,0 +1,53 @@
+# Git
+.git/
+
+# IDE / Editor
+.idea/
+.vscode/
+.kilocode/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Logs and temp
+*.log
+*.tmp
+*.temp
+npm-debug.log*
+
+# Node / package managers (future-proof)
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Build / dist (if ever used)
+dist/
+build/
+out/
+
+# Environment / secrets
+.env
+.env.local
+*.pem
+*.key
+
+# Chrome extension specific (keep icons and source!)
+# Do NOT ignore icons/ or manifest.json
+
+# Dev / build artifacts (not part of the extension)
+response.md
+analyze_json.js
+new.html
+gen_icons.js
+
+# (Uncommented after user confirmation - these were temporary development files)
