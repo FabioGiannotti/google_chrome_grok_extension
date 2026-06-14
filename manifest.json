@@ -1,0 +1,67 @@
+{
+  "manifest_version": 3,
+  "name": "Media Downloader for Grok",
+  "version": "1.0.0",
+  "description": "Intercepts and downloads generated media (images and videos) from Grok, embedding prompts into EXIF metadata. Features offline library, bulk downloads, metadata injection and enhanced UI on grok.com.",
+  "icons": {
+    "16": "icons/icon_active_16.png",
+    "32": "icons/icon_active_32.png",
+    "48": "icons/icon_active_48.png",
+    "128": "icons/icon_active_128.png"
+  },
+  "permissions": [
+    "storage",
+    "downloads",
+    "activeTab",
+    "tabs",
+    "notifications",
+    "contextMenus",
+    "alarms",
+    "unlimitedStorage"
+  ],
+  "host_permissions": [
+    "*://*.grok.com/*",
+    "*://assets.grok.com/*",
+    "*://imagine-public.x.ai/*",
+    "*://images-public.x.ai/*",
+    "*://*.x.ai/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.grok.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_start"
+    }
+  ],
+  "action": {
+    "default_title": "Grok Media Downloader",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon_active_16.png",
+      "32": "icons/icon_active_32.png",
+      "48": "icons/icon_active_48.png",
+      "128": "icons/icon_active_128.png"
+    }
+  },
+  "options_ui": {
+    "page": "settings.html",
+    "open_in_tab": true
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "inject.js"
+      ],
+      "matches": [
+        "*://*.grok.com/*"
+      ]
+    }
+  ]
+}

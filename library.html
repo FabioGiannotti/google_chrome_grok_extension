@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biblioteca Media - Grok Downloader</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="library.css">
+</head>
+<body>
+    <div class="app">
+        <header class="header">
+            <div class="header-content">
+                <div class="brand">
+                    <div class="logo">💾</div>
+                    <div>
+                        <h1>Biblioteca Salvati</h1>
+                        <p id="statsText">0 elementi salvati permanentemente</p>
+                    </div>
+                </div>
+                
+                <div class="storage-quota-center" id="storageQuotaContainer" style="display: none;" title="Spazio di archiviazione locale">
+                    <div class="quota-text">
+                        <span>Spazio Occupato: </span><span id="quotaPercent">0%</span>
+                    </div>
+                    <div class="quota-bar-track">
+                        <div id="quotaBarFill" class="quota-bar-fill"></div>
+                    </div>
+                </div>
+
+                <div class="actions">
+                    <button id="closeBtn" class="btn btn-secondary">Chiudi</button>
+                    <button id="statsBtn" class="btn btn-secondary">📊 Statistiche</button>
+                    <button id="refreshBtn" class="btn btn-secondary">🔃 Aggiorna</button>
+                    <button id="batchVideoBtn" class="btn btn-batch-video" title="Scarica i prossimi 40 video dalla biblioteca">📥 Scarica 40 Video</button>
+                    <button id="exportBtn" class="btn btn-accent">Esporta tutto</button>
+                </div>
+            </div>
+            
+            <div class="filters-row">
+                <div class="search-box">
+                    <span>🔍</span>
+                    <input type="text" id="searchInput" placeholder="Cerca prompt o file...">
+                </div>
+                <select id="typeFilter" class="filter-select">
+                    <option value="all">Tutti i media</option>
+                    <option value="image">Solo Immagini</option>
+                    <option value="video">Solo Video</option>
+                </select>
+                <select id="ratioFilter" class="filter-select">
+                    <option value="all">Tutte le Ratio</option>
+                    <option value="1:1">1:1 Quadrato</option>
+                    <option value="16:9">16:9 Wide</option>
+                    <option value="9:16">9:16 Portrait</option>
+                    <option value="4:3">4:3 Standard</option>
+                    <option value="3:2">3:2</option>
+                    <option value="2.4:1">2.4:1 Cinema</option>
+                </select>
+                <select id="dateFilter" class="filter-select">
+                    <option value="all">Filtra per data: TUTTO</option>
+                    <option value="today">Oggi</option>
+                    <option value="3days">Ultimi 3 giorni</option>
+                    <option value="week">Ultima settimana</option>
+                    <option value="this_month">Questo mese</option>
+                    <option value="last_month">Mese scorso</option>
+                    <option value="older_4m">Più di 4 mesi fa</option>
+                    <option value="last_year">L'anno scorso</option>
+                    <option value="custom">Intervallo personalizzato...</option>
+                </select>
+                <select id="userFilter" class="filter-select">
+                    <option value="all">Filtra per Utente: TUTTI</option>
+                    <!-- Options populated by JS -->
+                </select>
+                <div class="density-group" style="display: flex; gap: 4px; margin-left: 10px;">
+                    <button id="densityCompact" class="btn btn-secondary btn-xs" title="Compatta (S)">⣿</button>
+                    <button id="densityNormal" class="btn btn-secondary btn-xs" title="Normale (M)">⠿</button>
+                    <button id="densityLarge" class="btn btn-secondary btn-xs" title="Grande (L)">🟦</button>
+                </div>
+                <button id="clearAllBtn" class="btn btn-danger-outline" style="margin-left: auto;">Svuota Biblioteca</button>
+            </div>
+
+            <div id="customDateRange" class="advanced-filter-row" style="display: none;">
+                <div class="date-input-group">
+                    <span>Dal:</span>
+                    <input type="date" id="dateStart" class="filter-input-date">
+                </div>
+                <div class="date-input-group">
+                    <span>Al:</span>
+                    <input type="date" id="dateEnd" class="filter-input-date">
+                </div>
+            </div>
+        </header>
+
+        <!-- Batch Download Progress Bar -->
+        <div id="batchProgressBar" class="batch-progress-bar" style="display:none;">
+            <div class="batch-progress-inner">
+                <div class="batch-progress-info">
+                    <span id="batchProgressIcon">📥</span>
+                    <span id="batchProgressText">Preparazione download...</span>
+                    <span id="batchProgressCount" class="batch-count-badge">0 / 0</span>
+                </div>
+                <div class="batch-progress-track">
+                    <div id="batchProgressFill" class="batch-progress-fill" style="width:0%"></div>
+                </div>
+                <p id="batchProgressSub" class="batch-progress-sub"></p>
+            </div>
+        </div>
+
+        <main class="content">
+            <div id="mediaGrid">
+                <!-- Media cards grouped by day injected by library.js -->
+            </div>
+            <div id="emptyState" class="empty-state" style="display: none;">
+                <div class="empty-icon">📭</div>
+                <h2>La tua biblioteca è vuota</h2>
+                <p>Clicca l'icona del floppy disk sui media di Grok per salvarli qui permanentemente.</p>
+            </div>
+        </main>
+    </div>
+
+    <!-- Preview Overlay -->
+    <div id="previewOverlay" class="preview-overlay" style="display: none;">
+        <div class="preview-container">
+            <div id="previewMedia" class="preview-media"></div>
+            <div class="preview-info">
+                <p id="previewPrompt"></p>
+                <div class="preview-meta">
+                    <span id="previewDate"></span>
+                    <button id="previewCopyBtn" class="btn btn-xs">Copia Prompt</button>
+                    <button id="previewDlBtn" class="btn btn-primary btn-xs">Scarica</button>
+                </div>
+            </div>
+            <button id="closePreview" class="preview-close">×</button>
+        </div>
+    </div>
+
+    <!-- Confirm Modal -->
+    <div id="confirmModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h3>Conferma</h3>
+            <p id="confirmText">Sei sicuro?</p>
+            <div class="modal-actions">
+                <button id="confirmCancel" class="btn btn-secondary">Annulla</button>
+                <button id="confirmOk" class="btn btn-danger">Conferma</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Dashboard Overlay -->
+    <div id="statsDashboardOverlay" class="preview-overlay" style="display: none;">
+        <div class="stats-dashboard-container">
+            <header class="stats-header">
+                <h2>📊 Dashboard Statistiche</h2>
+                <button id="closeStatsBtn" class="btn-close-preview">&times;</button>
+            </header>
+            
+            <div class="stats-content">
+                <!-- Summary Row -->
+                <div class="stats-grid-top">
+                    <div class="stat-card">
+                        <div class="stat-icon">📁</div>
+                        <div class="stat-info">
+                            <span class="stat-label">File Totali</span>
+                            <span id="stat-total-count" class="stat-value">0</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">💾</div>
+                        <div class="stat-info">
+                            <span class="stat-label">Spazio Occupato</span>
+                            <span id="stat-storage-size" class="stat-value">-- MB</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🖼️</div>
+                        <div class="stat-info">
+                            <span class="stat-label">Immagini / Video</span>
+                            <span id="stat-media-mix" class="stat-value">-- / --</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Keywords Cloud -->
+                <div class="stats-section">
+                    <h3>🔍 Top Keywords nei Prompt</h3>
+                    <p class="stats-hint">Le parole che ispirano di più le tue generazioni.</p>
+                    <div id="stats-keywords-cloud" class="keywords-cloud">
+                        <!-- Injected by JS -->
+                    </div>
+                </div>
+
+                <!-- Simple Activity Bar Chart -->
+                <div class="stats-section">
+                    <h3>📅 Attività Ultimi 7 Giorni</h3>
+                    <div id="stats-activity-chart" class="activity-chart">
+                        <!-- Injected by JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="library.js"></script>
+</body>
+</html>
