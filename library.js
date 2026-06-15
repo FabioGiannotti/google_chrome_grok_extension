@@ -3,6 +3,34 @@ let currentFilter = { text: '', type: 'image', ratio: 'all', date: '3days', date
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+// ── Lazy-load queue ──────────────────────────────────────────────────────────
+// Limits concurrent chrome.runtime.sendMessage('getLibraryItemData') calls to
+// MAX_CONCURRENT to avoid flooding the message bus when many cards are visible.
+const MAX_CONCURRENT = 3;
+let _activeLoads = 0;
+const _loadQueue = [];   // {item, container, resolve}
+
+function _drainLoadQueue() {
+    while (_activeLoads < MAX_CONCURRENT && _loadQueue.length > 0) {
+        const { item, container, resolve } = _loadQueue.shift();
+        _activeLoads++;
+        chrome.runtime.sendMessage({ action: 'getLibraryItemData', id: item.id }, (resp) => {
+            _activeLoads--;
+            resolve(resp);
+            _drainLoadQueue();
+        });
+    }
+}
+
+function getLibraryItemDataQueued(item) {
+    return new Promise(resolve => {
+        _loadQueue.push({ item, resolve });
+        _drainLoadQueue();
+    });
+}
+
+
+
 document.addEventListener('DOMContentLoaded', async () => {
     // UI Elements
     const mediaGrid = document.getElementById('mediaGrid');
@@ -230,6 +258,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else {
             mediaGrid.style.display = 'block';
             emptyState.style.display = 'none';
+            // Disconnect old observer so stale containers are not watched
+            if (_lazyObserver) { _lazyObserver.disconnect(); _lazyObserver = null; }
             mediaGrid.innerHTML = '';
 
             let lastDateStr = null;
@@ -278,11 +308,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         card.className = 'media-card';
         
         const isVideo = item.type === 'video';
-        const thumbUrl = item.imageUrl || item.thumbnailUrl || item.url;
+        // Use thumbnailUrl as an instant preview for videos (no storage fetch needed)
+        const thumbUrl = item.thumbnailUrl || item.imageUrl || null;
         
+        // Build the preview area: show thumbnail immediately if available
+        const thumbHtml = thumbUrl
+            ? (isVideo
+                ? `<img src="${thumbUrl}" loading="lazy" class="video-thumb-placeholder">`
+                : `<img src="${thumbUrl}" loading="lazy">`)
+            : `<div class="media-preview-loading">⌛</div>`;
+
         card.innerHTML = `
             <div class="media-preview" id="preview-container-${item.id}">
-                <div class="media-preview-loading">⌛</div>
+                ${thumbHtml}
                 <div class="media-type-icon">${isVideo ? '🎬' : '🖼️'}</div>
             </div>
             <div class="media-footer">
@@ -301,8 +339,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             </div>
         `;
 
-        // Async load the actual image/video data
-        loadMediaData(item, card.querySelector('.media-preview'));
+        // Lazy-load full data only when card enters viewport
+        const previewContainer = card.querySelector('.media-preview');
+        previewContainer._lazyItem = item;
+        getLazyObserver().observe(previewContainer);
 
         // Click on card to preview
         card.onclick = (e) => {
@@ -327,7 +367,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const oldInner = btn.innerHTML;
             btn.innerHTML = '⌛';
             
-            chrome.runtime.sendMessage({ action: 'getLibraryItemData', id: item.id }, (resp) => {
+            getLibraryItemDataQueued(item).then(resp => {
                 if (resp && resp.dataUrl) {
                     chrome.runtime.sendMessage({
                         action: 'downloadWithPath',
@@ -355,64 +395,98 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function loadMediaData(item, container) {
-        chrome.runtime.sendMessage({ action: 'getLibraryItemData', id: item.id }, (resp) => {
-            const isVideo = item.type === 'video';
-            let dataUrl = resp?.dataUrl;
-            
-            // Fallback: if dataUrl is null but we have a valid remote URL in item.url/imageUrl
-            if (!dataUrl && item.url && !item.url.startsWith('data:')) {
-                dataUrl = item.url;
-            }
-            if (!dataUrl && item.imageUrl && !item.imageUrl.startsWith('data:')) {
-                dataUrl = item.imageUrl;
-            }
+        const isVideo = item.type === 'video';
 
-            if (dataUrl) {
-                container.innerHTML = isVideo 
-                    ? `<video src="${dataUrl}" muted></video>` 
-                    : `<img src="${dataUrl}" loading="lazy">`;
-                container.innerHTML += `<div class="media-type-icon">${isVideo ? '🎬' : '🖼️'}</div>`;
-                
-                const card = container.closest('.media-card');
+        // For videos that already show a thumbnail placeholder, swap to full
+        // data only when needed. Use the queued loader to cap concurrency.
+        const resp = await getLibraryItemDataQueued(item);
+        let dataUrl = resp?.dataUrl;
 
-                if (isVideo) {
-                    const video = container.querySelector('video');
-                    if (card && video) {
-                        card.onmouseenter = () => video.play().catch(() => {});
-                        card.onmouseleave = () => { video.pause(); video.currentTime = 0; };
-                    }
-                } else {
-                    // Recalculate aspect ratio if missing
-                    if (!item.aspectRatio) {
-                        const img = container.querySelector('img');
-                        if (img) {
-                            img.onload = () => {
-                                const ratio = img.naturalWidth / img.naturalHeight;
-                                let finalRatio = '';
-                                if (Math.abs(ratio - 1) < 0.05) finalRatio = "1:1";
-                                else if (Math.abs(ratio - 1.77) < 0.1) finalRatio = "16:9";
-                                else if (Math.abs(ratio - 0.56) < 0.1) finalRatio = "9:16";
-                                else if (Math.abs(ratio - 1.33) < 0.1) finalRatio = "4:3";
-                                else if (Math.abs(ratio - 0.75) < 0.1) finalRatio = "3:4";
-                                else if (Math.abs(ratio - 1.5) < 0.1) finalRatio = "3:2";
-                                else if (Math.abs(ratio - 0.66) < 0.1) finalRatio = "2:3";
-                                else finalRatio = `${Math.round(ratio * 10) / 10}:1`;
-                                
-                                if (finalRatio && card) {
-                                    const label = card.querySelector('.media-ratio-label');
-                                    if (label) {
-                                        label.textContent = `📐 ${finalRatio}`;
-                                        label.setAttribute('title', 'Aspect Ratio');
-                                    }
-                                }
-                            };
-                        }
-                    }
+        // Fallback: if dataUrl is null but we have a valid remote URL
+        if (!dataUrl && item.url && !item.url.startsWith('data:')) dataUrl = item.url;
+        if (!dataUrl && item.imageUrl && !item.imageUrl.startsWith('data:')) dataUrl = item.imageUrl;
+
+        if (dataUrl) {
+            const card = container.closest('.media-card');
+
+            if (isVideo) {
+                // preload="metadata" → browser shows first frame without decoding full video.
+                // poster = thumbnailUrl/imageUrl so something is visible instantly.
+                const posterAttr = (item.thumbnailUrl || item.imageUrl)
+                    ? `poster="${item.thumbnailUrl || item.imageUrl}"`
+                    : '';
+                // No "muted" attribute — extension pages bypass autoplay restrictions,
+                // so audio works on hover without any policy block.
+                container.innerHTML =
+                    `<video src="${dataUrl}" preload="metadata" ${posterAttr}></video>` +
+                    `<div class="media-type-icon">🎬</div>`;
+                const video = container.querySelector('video');
+                if (card && video) {
+                    card.onmouseenter = () => {
+                        video.muted = false;
+                        video.preload = 'auto';
+                        video.play().catch(() => {
+                            // Fallback: if browser still blocks unmuted, play muted
+                            video.muted = true;
+                            video.play().catch(() => {});
+                        });
+                    };
+                    card.onmouseleave = () => { video.pause(); video.currentTime = 0; };
                 }
             } else {
-                container.innerHTML = `<div class="media-preview-error">❌ Errore caricamento</div>`;
+                container.innerHTML =
+                    `<img src="${dataUrl}" loading="lazy">` +
+                    `<div class="media-type-icon">🖼️</div>`;
+
+                // Recalculate aspect ratio if missing
+                if (!item.aspectRatio) {
+                    const img = container.querySelector('img');
+                    if (img) {
+                        img.onload = () => {
+                            const ratio = img.naturalWidth / img.naturalHeight;
+                            let finalRatio = '';
+                            if (Math.abs(ratio - 1) < 0.05)    finalRatio = "1:1";
+                            else if (Math.abs(ratio - 1.77) < 0.1) finalRatio = "16:9";
+                            else if (Math.abs(ratio - 0.56) < 0.1) finalRatio = "9:16";
+                            else if (Math.abs(ratio - 1.33) < 0.1) finalRatio = "4:3";
+                            else if (Math.abs(ratio - 0.75) < 0.1) finalRatio = "3:4";
+                            else if (Math.abs(ratio - 1.5)  < 0.1) finalRatio = "3:2";
+                            else if (Math.abs(ratio - 0.66) < 0.1) finalRatio = "2:3";
+                            else finalRatio = `${Math.round(ratio * 10) / 10}:1`;
+
+                            if (finalRatio && card) {
+                                const label = card.querySelector('.media-ratio-label');
+                                if (label) {
+                                    label.textContent = `📐 ${finalRatio}`;
+                                    label.setAttribute('title', 'Aspect Ratio');
+                                }
+                            }
+                        };
+                    }
+                }
             }
-        });
+        } else {
+            container.innerHTML = `<div class="media-preview-error">❌ Errore caricamento</div>`;
+        }
+    }
+
+    // IntersectionObserver: fires loadMediaData only when card enters viewport
+    // Defined HERE (inside DOMContentLoaded) so it can close over loadMediaData.
+    let _lazyObserver = null;
+    function getLazyObserver() {
+        if (!_lazyObserver) {
+            _lazyObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const container = entry.target;
+                        _lazyObserver.unobserve(container);
+                        const item = container._lazyItem;
+                        if (item) loadMediaData(item, container);
+                    }
+                });
+            }, { rootMargin: '200px 0px' }); // pre-load 200px before visible
+        }
+        return _lazyObserver;
     }
 
     async function deleteItem(id) {
